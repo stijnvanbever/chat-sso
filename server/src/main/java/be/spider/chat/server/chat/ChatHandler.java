@@ -29,4 +29,12 @@ public class ChatHandler {
         return msg.map(chatService::addMessage)
                 .flatMap(str -> ServerResponse.ok().body(BodyInserters.fromObject("added")));
     }
+
+    public Mono<ServerResponse> join(ServerRequest request) {
+        Mono<String> userName = request.bodyToMono(String.class);
+        return userName.map(chatService::joinChat)
+                .flatMap(token -> ServerResponse.ok()
+                        .header("Authorization", "Bearer " + token.block())
+                        .body(BodyInserters.empty()));
+    }
 }

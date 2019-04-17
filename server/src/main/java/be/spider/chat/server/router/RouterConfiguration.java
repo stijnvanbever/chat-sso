@@ -40,6 +40,7 @@ public class RouterConfiguration {
         return RouterFunctions.route()
                 .GET("/api/chat", chatHandler::getChatStream)
                 .POST("/api/chat", chatHandler::addChat)
+                .POST("/api/chat/join", chatHandler::join)
                 .build();
 
     }
