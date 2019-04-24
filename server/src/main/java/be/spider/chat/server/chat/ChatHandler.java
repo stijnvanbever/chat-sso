@@ -1,5 +1,6 @@
 package be.spider.chat.server.chat;
 
+import be.spider.chat.server.jwt.JwtHandler;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyInserters;
@@ -11,30 +12,27 @@ import reactor.core.publisher.Mono;
 @Component
 public class ChatHandler {
     private final ChatService chatService;
+    private final JwtHandler jwtHandler;
 
-    public ChatHandler(ChatService chatService) {
+    public ChatHandler(ChatService chatService, JwtHandler jwtHandler) {
         this.chatService = chatService;
+        this.jwtHandler = jwtHandler;
     }
 
 
     public Mono<ServerResponse> getChatStream(ServerRequest request) {
         Flux<String> chatStream = chatService.getChatStream();
         Flux<ServerSentEvent<String>> sseChat = chatStream
-                .map(message -> ServerSentEvent.builder(message).id(message).build());
+                .map(message -> ServerSentEvent.builder(message).build());
         return ServerResponse.ok().body(BodyInserters.fromServerSentEvents(sseChat));
     }
 
     public Mono<ServerResponse> addChat(ServerRequest request) {
+        String userName = jwtHandler.getUserName(request).get();
         Mono<String> msg = request.bodyToMono(String.class);
-        return msg.map(chatService::addMessage)
+        return msg.map(message -> chatService.addMessage(userName, message))
                 .flatMap(str -> ServerResponse.ok().body(BodyInserters.fromObject("added")));
     }
 
-    public Mono<ServerResponse> join(ServerRequest request) {
-        Mono<String> userName = request.bodyToMono(String.class);
-        return userName.map(chatService::joinChat)
-                .flatMap(token -> ServerResponse.ok()
-                        .header("Authorization", "Bearer " + token.block())
-                        .body(BodyInserters.empty()));
-    }
+
 }

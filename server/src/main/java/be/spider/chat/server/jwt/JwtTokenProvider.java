@@ -16,4 +16,12 @@ public class JwtTokenProvider {
                 .signWith(SECRETKEY)
                 .compact();
     }
+
+    public String getSubject(String token) {
+        return Jwts.parser()
+                .setSigningKey(SECRETKEY)
+                .parseClaimsJws(token)
+                .getBody()
+                .getSubject();
+    }
 }

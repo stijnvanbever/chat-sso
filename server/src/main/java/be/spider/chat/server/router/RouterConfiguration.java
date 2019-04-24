@@ -1,11 +1,9 @@
 package be.spider.chat.server.router;
 
 import be.spider.chat.server.chat.ChatHandler;
+import be.spider.chat.server.jwt.JwtHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.reactive.CorsWebFilter;
-import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 import org.springframework.web.reactive.config.EnableWebFlux;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
@@ -15,33 +13,26 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 @Configuration
 public class RouterConfiguration {
     private final ChatHandler chatHandler;
+    private final JwtHandler jwtHandler;
 
-    public RouterConfiguration(ChatHandler chatHandler) {
+    public RouterConfiguration(ChatHandler chatHandler, JwtHandler jwtHandler) {
         this.chatHandler = chatHandler;
+        this.jwtHandler = jwtHandler;
     }
 
     @Bean
-    public CorsWebFilter corsFilter() {
-        CorsConfiguration config = new CorsConfiguration();
-
-        config.setAllowCredentials(true);
-        config.addAllowedOrigin("*");
-        config.addAllowedHeader("*");
-        config.addAllowedMethod("*");
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-
-        return new CorsWebFilter(source);
-    }
-
-    @Bean
-    public RouterFunction<ServerResponse> routerFunction() {
+    public RouterFunction<ServerResponse> routersWithAuthorization() {
         return RouterFunctions.route()
                 .GET("/api/chat", chatHandler::getChatStream)
                 .POST("/api/chat", chatHandler::addChat)
-                .POST("/api/chat/join", chatHandler::join)
+                .filter(jwtHandler::filterToken)
                 .build();
+    }
 
+    @Bean
+    public RouterFunction<ServerResponse> joinRouter() {
+        return RouterFunctions.route()
+                .POST("/api/chat/join", jwtHandler::createToken)
+                .build();
     }
 }
